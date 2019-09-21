@@ -13,8 +13,11 @@ class Stitcher:
         # local invariant descriptors from them
         print("in stitch")
         (imageB, imageA) = images
-        (kpsA, featuresA) = self.detectAndDescribe(imageA)
-        (kpsB, featuresB) = self.detectAndDescribe(imageB)
+        (kpsA, featuresA) = self.detectAndDescribe(imageA,"A")
+        (kpsB, featuresB) = self.detectAndDescribe(imageB,"B")
+        kpsA = np.float32([kpA.pt for kpA in kpsA])
+        kpsB = np.float32([kpB.pt for kpB in kpsB])
+
 
         # match features between the two images
         M = self.matchKeypoints(kpsA, kpsB, featuresA, featuresB, ratio, reprojThresh)
@@ -42,14 +45,22 @@ class Stitcher:
         # return the stitched image
         return result
 
-    def detectAndDescribe(self, image):
+    def detectAndDescribe(self, image, name):
         print("in detect and describe")
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         # descriptor = cv2.xfeatures2d.SIFT_create()
-        descriptor = cv2.ORB_create()
+        descriptor = cv2.ORB_create(nfeatures = 1500, edgeThreshold = 15, patchSize = 15)
         kps = descriptor.detect(image, None)
         kps, features = descriptor.compute(image, kps)
-        kps = np.float32([kp.pt for kp in kps])
+        print (len(kps))
+        print (descriptor.getMaxFeatures())
+        # kps = np.float32([kp.pt for kp in kps])
+
+        # cv2.imshow("kps:",kps)
+        # cv2.imshow("features",features)
+        if (len(kps) > 0):
+            image = cv2.drawKeypoints(image,kps,np.array([]),color=(0,255,0), flags=0)
+        cv2.imshow("keypoints" + name,image)
         return (kps, features)
 		
 
@@ -77,7 +88,7 @@ class Stitcher:
             # compute the homography between the two sets of points
             (H, status) = cv2.findHomography(ptsA, ptsB, cv2.RANSAC,
                 reprojThresh)
-
+            print (H)
             # return the matches along with the homograpy matrix
             # and status of each matched point
             print len(matches)
@@ -110,17 +121,19 @@ class Stitcher:
 # load the two images and resize them to have a width of 400 pixels
 # (for faster processing)
 if __name__== "__main__":
-    for i in range(2,3):
+    for i in range(4,5):
         for j in range(3,4):
-            imageA = cv2.imread('/home/akshay/Sem1901/COL780/A2/InSample-20190907T082820Z-001/InSample/1/'+str(i)+'.jpg')
-            imageB = cv2.imread('/home/akshay/Sem1901/COL780/A2/InSample-20190907T082820Z-001/InSample/1/'+str(j)+'.jpg')
+            imageA = cv2.imread('./Data/1/'+str(i)+'.jpg')
+            imageB = cv2.imread('./Data/1/'+str(j)+'.jpg')
             imageA = imutils.resize(imageA, width=400)
             imageB = imutils.resize(imageB, width=400)
             print(str(i)+" "+str(j))
             # stitch the images together to create a panorama
             stitcher = Stitcher()
             (result, vis) = stitcher.stitch([imageA, imageB], showMatches=True)
-            
+            # (kps, features) = stitcher.detectAndDescribe(imageA,"A")
+            # (kps, features) = stitcher.detectAndDescribe(imageB,"B")
+
             # show the images
             cv2.imshow("Image A", imageA)
             cv2.imshow("Image B", imageB)
